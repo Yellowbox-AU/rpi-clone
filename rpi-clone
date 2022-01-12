@@ -85,9 +85,17 @@ then
 	apt-get install -y --no-install-recommends $need_packages
 fi
 
-clone=/mnt/clone
-clone_src=/mnt/clone-src
-clone_log=/var/log/$PGM.log
+echo "third argument is $3"
+
+if [ "$3" = "" ]
+then
+	echo -e "Must specify -s <device-hostname>!\n"
+	exit 1
+fi
+
+clone="/mnt/clone$3"
+clone_src="/mnt/clone-src-$3"
+clone_log="/var/log/$PGM-$3.log"
 
 HOSTNAME=`hostname`
 
@@ -298,7 +306,7 @@ rsync_file_system()
 			$exclude_swapfile \
 			--exclude '.gvfs' \
 			--exclude '/dev/*' \
-			--exclude '/mnt/clone/*' \
+			--exclude '/mnt/*' \
 			--exclude '/proc/*' \
 			--exclude '/run/*' \
 			--exclude '/sys/*' \
