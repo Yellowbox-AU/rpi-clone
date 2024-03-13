@@ -153,6 +153,17 @@ sudo rm pki/minion/minion.pub
 cat /dev/null > minion_id
 echo Erased salt minion config so new one will be generated on device first start
 
+##
+# Add more customizations if needed.
+#
+
+# Have the minion regenerate a new key when it boots
+cd $clone/etc/salt
+sudo rm pki/minion/minion.pem
+sudo rm pki/minion/minion.pub
+cat /dev/null > minion_id
+echo Erased salt minion config so new one will be generated on device first start
+
 # Generate a new machine-id
 sudo rm $clone/etc/machine-id
 sudo dbus-uuidgen --ensure=$clone/etc/machine-id

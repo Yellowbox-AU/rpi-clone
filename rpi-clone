@@ -89,6 +89,21 @@ then
 	apt-get install -y --no-install-recommends $need_packages
 fi
 
+echo "third argument is $3"
+
+if [ "$3" = "" ]
+then
+	echo -e "Must specify -s <device-hostname>!\n"
+	exit 1
+fi
+
+clone="/mnt/clone$3"
+clone_src="/mnt/clone-src-$3"
+clone_log="/var/log/$PGM-$3.log"
+
+HOSTNAME=`hostname`
+
+
 usage()
 	{
 	echo $"
