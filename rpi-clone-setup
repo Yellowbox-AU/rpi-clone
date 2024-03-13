@@ -27,9 +27,6 @@
 
 file_list="etc/hostname etc/hosts"
 
-clone=/mnt/clone
-clone_test=/tmp/clone-test
-
 PGM=`basename $0`
 
 if [ `id -u` != 0 ]
@@ -79,11 +76,14 @@ then
 	usage
 fi
 
+clone="/mnt/clone$newhost"
+clone_test="/tmp/clone-test-$newhost"
+
 echo -e "\t$newhost\t- target hostname"
 
-if ((!testing)) && [ ! -d /mnt/clone/etc ]
+if ((!testing)) && [ ! -d "$clone/etc" ]
 then
-	echo "A destination clone file system is not mounted on /mnt/clone"
+	echo "A destination clone file system is not mounted on $clone"
 	echo "Aborting!"
 	exit 0
 fi
@@ -135,10 +135,36 @@ LINE=`grep $newhost hosts`
 echo -e "$LINE\n"
 
 
-##
-# Add more customizations if needed.
-#
+# echo removing directories yb-*
+# rm -rf $clone/home/pi/yb-*
+# cd $clone/home/pi/.config/syncthing
+# # remove key and cert so new ones will be generated
+# rm key.pem cert.pem
+# # Update config - remove original deployment folder listing, set autoAcceptFolders to true so host Pi can add this Pi as a device and then share whatever folders it wants with it
+# # Writing to the same file we are reading from results in an empty file. Write to a new name then move to replace
+# node -p "require('fs').readFileSync('./config.xml').toString().replace(/ *<folder[\s\S]+?<\/folder>\n/, '').replace(/(?<=<autoAcceptFolders>)false/g, 'true')" > config2.xml
+# mv config2.xml config.xml
+# echo updated syncthing config.xml, removed key and cert.pem. config.xml content:
 
+# Have the minion regenerate a new key when it boots
+cd $clone/etc/salt
+sudo rm pki/minion/minion.pem
+sudo rm pki/minion/minion.pub
+cat /dev/null > minion_id
+echo Erased salt minion config so new one will be generated on device first start
+
+# Generate a new machine-id
+sudo rm $clone/etc/machine-id
+sudo dbus-uuidgen --ensure=$clone/etc/machine-id
+echo "New machine id generated: $(cat $clone/etc/machine-id) (Old $(cat /etc/machine-id))"
+
+cd $clone/etc/frp
+# Update the name in the frpc config file
+sudo sed -i "s/ssh-$(cat /etc/hostname)/ssh-$newhost/" frpc.ini
+# Have frps assign the device a random available port
+sudo sed -Ei "s/(remote_port *= *)[0-9]+/\10/" frpc.ini
+echo Fixed frpc.ini
+
+# Add more customizations if needed
 
 exit 0
-

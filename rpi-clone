@@ -17,7 +17,11 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 grub_auto=1
 
 PGM=`basename $0`
-setup_command="$PGM-setup"
+setup_command="./$PGM-setup"
+if [ -f "$setup_command" ]; then
+	chmod +x "$setup_command"
+fi
+echo "setup_command is $setup_command"
 
 rsync_options="--force -rltWDEHXAgoptx"
 
@@ -85,13 +89,6 @@ then
 	apt-get install -y --no-install-recommends $need_packages
 fi
 
-clone=/mnt/clone
-clone_src=/mnt/clone-src
-clone_log=/var/log/$PGM.log
-
-HOSTNAME=`hostname`
-
-
 usage()
 	{
 	echo $"
@@ -101,7 +98,7 @@ usage: $PGM sdN {-v|--verbose} {-f|--force-initialize} {-f2}
          {-L|--label-partitions label} {-l|--leave-sd-usb-boot}
          {-a|--all-sync} {-F|--Force-sync} {-x} {-V|--version}
          {--convert-fstab-to-partuuid}
-         {--exclude=PATTERN} {--exclude-from=FILE}
+         {--exclude=PATTERN} {--exclude-from=FILE} -s <device-hostname>
 
     -v	    - verbose rsync, list all files as they are copied.
     -f	    - force initialize the destination disk by imaging the booted disk
@@ -164,6 +161,21 @@ usage: $PGM sdN {-v|--verbose} {-f|--force-initialize} {-f2}
 "
 	exit 1
 	}
+
+
+echo "third argument is $3"
+if [ "$3" = "" ]
+then
+	echo -e "Must specify -s <device-hostname>!\n"
+	usage
+	exit 1
+fi
+
+clone="/mnt/clone$3"
+clone_src="/mnt/clone-src-$3"
+clone_log="/var/log/$PGM-$3.log"
+
+HOSTNAME=`hostname`
 
 readable_MiB()
 	{
@@ -298,7 +310,7 @@ rsync_file_system()
 			$exclude_swapfile \
 			--exclude '.gvfs' \
 			--exclude '/dev/*' \
-			--exclude '/mnt/clone/*' \
+			--exclude '/mnt/*' \
 			--exclude '/proc/*' \
 			--exclude '/run/*' \
 			--exclude '/sys/*' \
@@ -1649,6 +1661,12 @@ then
 fi
 
 sync
+echo 'Partitioning complete. Waiting for input before continuing...'
+# Wait for some input here so we can ensure all instances of the program start rsync at the same time
+read user_input
+
+echo "Got input from user: >$user_input< - continuing"
+
 qprintf "\nSyncing file systems (can take a long time)\n"
 
 sync_msg_done=0
