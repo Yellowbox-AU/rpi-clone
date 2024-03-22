@@ -177,26 +177,7 @@ sudo sed -Ei "s/(remote_port *= *)[0-9]+/\10/" frpc.ini
 echo Fixed frpc.ini
 
 # Set up keypair for firebase login
-identity_path=$clone/etc/yellowbox/identity
-mkdir -p "$identity_path"
-openssl genpkey -algorithm ed25519 -out "$identity_path/private_key.pem"
-openssl pkey -in "$identity_path/private_key.pem" -pubout -out "$identity_path/public_key.pem"
-# Ensure we are logged into firebase, or will refresh the access token if we already are
-# Assuming you're not using a service account
-firebase login
-firebase_access_token=$(jq -r .tokens.access_token ~/.config/configstore/firebase-tools.json)
-# ENSURE YOU HAVE FIREBASE_API_KEY SET IN YOUR ENVIRONMENT
-# Upload the public key to firestore
-curl -X PATCH "https://firestore.googleapis.com/v1/projects/yellowbox-dev/databases/(default)/documents/controllers/$newhost/identity/public_key?updateMask.fieldPaths=publicKey&key=$FIREBASE_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $firebase_access_token" \
-  -d "{\"fields\": {\"publicKey\": {\"stringValue\": \"$(cat $identity_path/public_key.pem)\"}}}"
-# Create/rewrite nonce document
-curl -X PATCH "https://firestore.googleapis.com/v1/projects/yellowbox-dev/databases/(default)/documents/controllers/$newhost/identity/auth_nonce?updateMask.fieldPaths=nonce&key=$FIREBASE_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $firebase_access_token" \
-  -d "{\"fields\": {\"nonce\": {\"stringValue\": \"$(openssl rand -base64 16)\"}}}"
-echo "Set up device firebase authentication"
+./init-identity $newhost $clone/etc/yellowbox/identity
 
 # Add more customizations if needed
 exit 0

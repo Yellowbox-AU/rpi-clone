@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# Generate a new identity keypair and upload the public key to firestore
+# Ensure you have FIREBASE_API_KEY set in your environment
+
+hostname="$1"
+identity_path="$2"
+
+if [ -z "$hostname" ]; then
+	echo "Error: No hostname specified."
+	exit 1
+fi
+
+if [ -z "$identity_path" ]; then
+	echo "Error: No target directory for identity path specified."
+	exit 1
+fi
+
+# Set up keypair for firebase login
+mkdir -p "$identity_path"
+openssl genpkey -algorithm ed25519 -out "$identity_path/private_key.pem"
+openssl pkey -in "$identity_path/private_key.pem" -pubout -out "$identity_path/public_key.pem"
+# Ensure we are logged into firebase, or will refresh the access token if we already are
+# Assuming you're not using a service account
+firebase login
+firebase_access_token=$(jq -r .tokens.access_token ~/.config/configstore/firebase-tools.json)
+
+# Upload the public key to firestore
+curl -X PATCH "https://firestore.googleapis.com/v1/projects/yellowbox-dev/databases/(default)/documents/controllers/$hostname/identity/public_key?updateMask.fieldPaths=publicKey&key=$FIREBASE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $firebase_access_token" \
+  -d "{\"fields\": {\"publicKey\": {\"stringValue\": \"$(cat $identity_path/public_key.pem)\"}}}"
+# Create/rewrite nonce document
+curl -X PATCH "https://firestore.googleapis.com/v1/projects/yellowbox-dev/databases/(default)/documents/controllers/$hostname/identity/auth_nonce?updateMask.fieldPaths=nonce&key=$FIREBASE_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $firebase_access_token" \
+  -d "{\"fields\": {\"nonce\": {\"stringValue\": \"$(openssl rand -base64 16)\"}}}"
+
+echo "Set up device identity"
