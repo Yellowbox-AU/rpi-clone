@@ -5,10 +5,16 @@
 set -eu
 
 hostname="$1"
-identity_path="$2"
+firebase_project="$2"
+identity_path="$3"
 
 if [ -z "$hostname" ]; then
 	echo "Error: No hostname specified." 1>&2;
+	exit 1
+fi
+
+if [ -z "$firebase_project" ]; then
+	echo "Error: No firebase project specified." 1>&2;
 	exit 1
 fi
 
@@ -16,12 +22,6 @@ if [ -z "$identity_path" ]; then
 	echo "Error: No target directory for identity path specified." 1>&2;
 	exit 1
 fi
-
-if [ -z "$YB_FIREBASE_PROJECT" ]; then
-	echo "Error: No YB_FIREBASE_PROJECT specified." 1>&2;
-	exit 1
-fi
-
 if [ -z "$YB_FIREBASE_API_KEY" ]; then
 	echo "Error: No YB_FIREBASE_API_KEY specified." 1>&2;
 	exit 1
@@ -34,12 +34,12 @@ openssl pkey -in "$identity_path/private_key.pem" -pubout -out "$identity_path/p
 gcloud_access_token=$(gcloud auth print-access-token)
 
 # Upload the public key to firestore
-curl -X PATCH "https://firestore.googleapis.com/v1/projects/$YB_FIREBASE_PROJECT/databases/(default)/documents/controllers/$hostname/identity/public_key?updateMask.fieldPaths=publicKey&key=$YB_FIREBASE_API_KEY" \
+curl -X PATCH "https://firestore.googleapis.com/v1/projects/$firebase_project/databases/(default)/documents/controllers/$hostname/identity/public_key?updateMask.fieldPaths=publicKey&key=$YB_FIREBASE_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $gcloud_access_token" \
   -d "{\"fields\": {\"publicKey\": {\"stringValue\": \"$(cat $identity_path/public_key.pem)\"}}}"
 # Create/rewrite nonce document
-curl -X PATCH "https://firestore.googleapis.com/v1/projects/$YB_FIREBASE_PROJECT/databases/(default)/documents/controllers/$hostname/identity/auth_nonce?updateMask.fieldPaths=nonce&key=$YB_FIREBASE_API_KEY" \
+curl -X PATCH "https://firestore.googleapis.com/v1/projects/$firebase_project/databases/(default)/documents/controllers/$hostname/identity/auth_nonce?updateMask.fieldPaths=nonce&key=$YB_FIREBASE_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $gcloud_access_token" \
   -d "{\"fields\": {\"nonce\": {\"stringValue\": \"$(openssl rand -base64 16)\"}}}"
