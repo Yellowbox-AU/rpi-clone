@@ -22,21 +22,17 @@ if [ -z "$identity_path" ]; then
 	echo "Error: No target directory for identity path specified." 1>&2;
 	exit 1
 fi
-if [ -z "$YB_FIREBASE_API_KEY" ]; then
-	echo "Error: No YB_FIREBASE_API_KEY specified." 1>&2;
-	exit 1
-fi
+
 
 # Set up keypair for firebase login
 mkdir -p "$identity_path"
 openssl genpkey -algorithm ed25519 -out "$identity_path/private_key.pem"
 openssl pkey -in "$identity_path/private_key.pem" -pubout -out "$identity_path/public_key.pem"
-gcloud_access_token=$(gcloud auth print-access-token)
 
 # Upload the public key and nonce to firestore
-curl -X PATCH "https://firestore.googleapis.com/v1/projects/$firebase_project/databases/(default)/documents/controller_identity/$hostname?updateMask.fieldPaths=publicKey&updateMask.fieldPaths=nonce&key=$YB_FIREBASE_API_KEY" \
+curl -X PATCH "https://firestore.googleapis.com/v1/projects/$firebase_project/databases/(default)/documents/controller_identity/$hostname?updateMask.fieldPaths=publicKey&updateMask.fieldPaths=nonce&key=$FIREBASE_API_KEY" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $gcloud_access_token" \
+  -H "Authorization: Bearer $GCLOUD_ACCESS_TOKEN" \
   -d "{\"fields\": {\"publicKey\": {\"stringValue\": \"$(cat $identity_path/public_key.pem)\"}, \"nonce\": {\"stringValue\": \"$(openssl rand -base64 16)\"}}}"
 
 echo "Set up device identity"

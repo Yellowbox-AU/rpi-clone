@@ -83,6 +83,8 @@ while getopts ":t" opt; do
 done
 shift $((OPTIND -1))
 
+script_dir=$(realpath $(dirname $0))
+echo "Script dir: $script_dir"
 newhost=$1
 echo "new host: $newhost"
 if [ "$newhost" = "" ]
@@ -203,7 +205,7 @@ sudo sed -Ei "s/(remote_port *= *)[0-9]+/\10/" frpc.ini
 echo Fixed frpc.ini
 
 # Set up keypair for firebase login
-./init-identity $newhost $firebase_project $clone/etc/yellowbox/identity
+"$script_dir"/init-identity $newhost $firebase_project $clone/etc/yellowbox/identity
 
 # Add more customizations if needed
 exit 0
