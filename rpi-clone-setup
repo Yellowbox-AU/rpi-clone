@@ -69,30 +69,38 @@ function usage
 	firebase_project=$2
 	}
 
-testing=0
-while [ "$1" ]
-do
-	case "$1" in
-		-t|--test)
+
+while getopts ":t" opt; do
+	case ${opt} in
+		t )
 			testing=1
 			;;
-		*)
-			if [ "$newhost" != "" ]
-			then
-				echo "Bad args"
-				usage
-			fi
-			newhost=$1
+		\? )
+			echo "Invalid option: -$OPTARG" 1>&2
+			exit 1
 			;;
 	esac
-	shift
 done
+shift $((OPTIND -1))
 
+newhost=$1
+echo "new host: $newhost"
 if [ "$newhost" = "" ]
 then
-	echo -e "You must specify a target hostname\n"
+	echo -e "Must specify hostname!"
 	usage
+	exit 1
 fi
+
+firebase_project=$2
+echo "firebase project: $firebase_project"
+if [ "$firebase_project" = "" ]
+then
+	echo -e "Must specify firebase project!"
+	usage
+	exit 1
+fi
+
 
 clone="/mnt/clone$newhost"
 clone_test="/tmp/clone-test-$newhost"
