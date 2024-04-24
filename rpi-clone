@@ -89,18 +89,6 @@ then
 	apt-get install -y --no-install-recommends $need_packages
 fi
 
-echo "third argument is $3"
-
-if [ "$3" = "" ]
-then
-	echo -e "Must specify -s <device-hostname>!\n"
-	exit 1
-fi
-
-clone="/mnt/clone$3"
-clone_src="/mnt/clone-src-$3"
-clone_log="/var/log/$PGM-$3.log"
-
 HOSTNAME=`hostname`
 
 
@@ -109,11 +97,11 @@ usage()
 	echo $"
 usage: $PGM sdN {-v|--verbose} {-f|--force-initialize} {-f2}
          {-p|--p1-size size} {-u|--unattended} {-U|--Unattended} {-q|--quiet}
-         {-s|--setup host} {-e|--edit-fstab sdX } {-m|--mountdir dir }
+         {-e|--edit-fstab sdX } {-m|--mountdir dir }
          {-L|--label-partitions label} {-l|--leave-sd-usb-boot}
          {-a|--all-sync} {-F|--Force-sync} {-x} {-V|--version}
          {--convert-fstab-to-partuuid}
-         {--exclude=PATTERN} {--exclude-from=FILE} -s <device-hostname>
+         {--exclude=PATTERN} {--exclude-from=FILE} <device-hostname> <firebase-project>
 
     -v	    - verbose rsync, list all files as they are copied.
     -f	    - force initialize the destination disk by imaging the booted disk
@@ -178,17 +166,41 @@ usage: $PGM sdN {-v|--verbose} {-f|--force-initialize} {-f2}
 	}
 
 
-echo "third argument is $3"
-if [ "$3" = "" ]
+dst_disk=$1
+dir=`expr substr $dst_disk 1 5`
+if [ "$dir" == "/dev/" ]
 then
-	echo -e "Must specify -s <device-hostname>!\n"
+	dst_disk=${dst_disk#/dev/}
+fi
+echo "destination disk: $dst_disk"
+if [ "$dst_disk" = "" ]
+then
+	echo -e "Must specify destination disk!"
+	usage
+	exit 1	
+fi
+
+device_hostname=$2
+echo "device hostname: $device_hostname"
+if [ "$device_hostname" = "" ]
+then
+	echo -e "Must specify device hostname!"
 	usage
 	exit 1
 fi
 
-clone="/mnt/clone$3"
-clone_src="/mnt/clone-src-$3"
-clone_log="/var/log/$PGM-$3.log"
+firebase_project=$3
+echo "firebase project: $firebase_project"
+if [ "$firebase_project" = "" ]
+then
+	echo -e "Must specify firebase project!"
+	usage
+	exit 1
+fi
+
+clone="/mnt/clone$device_hostname"
+clone_src="/mnt/clone-src-$device_hostname"
+clone_log="/var/log/$PGM-$device_hostname.log"
 
 HOSTNAME=`hostname`
 
@@ -316,7 +328,7 @@ rsync_file_system()
 	src_dir="$1"
 	dst_dir="$2"
 
-	qprintf "  => rsync $1 $2 $3 ..."
+	qprintf "  => rsync $1 $2 $device_hostname ..."
 
 	if [ "$3" == "with-root-excludes" ]
 	then
@@ -557,12 +569,7 @@ print_options()
 		printf "%-22s : %s\n" "-l SD to USB boot mode" "$msg"
 	fi
 
-	if [ "$setup_args" != "" ]
-	then
-		printf "%-22s : %s\n" "Run setup script" "$setup_command $setup_args"
-	else
-		printf "%-22s : no.\n" "Run setup script"
-	fi
+	printf "%-22s : %s\n" "Run setup script" "$setup_command $device_hostname $firebase_project"
 
 	if ((have_grub))
 	then
@@ -779,7 +786,6 @@ done
 
 # command line
 #
-setup_args=""
 edit_fstab_name=""
 ext_label=""
 verbose="no"
@@ -818,20 +824,6 @@ do
 			;;
 		--exclude=*|--exclude-from=*)
 			exclude_useropt="${exclude_useropt} $1"
-			;;
-		-s|--setup)
-			shift
-			if ! command -v $setup_command > /dev/null
-			then
-				echo "Cannot find script $setup_command for setup arg \"$1\"."
-				usage_error=1
-			fi
-			if [ "$setup_args" == "" ]
-			then
-				setup_args="$1"
-			else
-				setup_args="$setup_args $1"
-			fi
 			;;
 		-e|--edit-fstab)
 			shift
@@ -930,18 +922,6 @@ do
 			usage
 			;;
 		*)
-			if [ "$dst_disk" != "" ]
-			then
-				echo "Bad arg: $1"
-				echo "Run $PGM with -h or no args for usage."
-				exit 1
-			fi
-			dst_disk=$1
-			dir=`expr substr $dst_disk 1 5`
-			if [ "$dir" == "/dev/" ]
-			then
-				dst_disk=${dst_disk#/dev/}
-			fi
 			;;
 	esac
 	shift
@@ -1821,11 +1801,8 @@ then
 	fi
 fi
 
-if [ "$setup_args" != "" ]
-then
-	qprintf "\nRunning setup script: $setup_command $setup_args\n"
-	$setup_command $setup_args
-fi
+qprintf "\nRunning setup script: $setup_command $device_hostname $firebase_project\n"
+$setup_command $device_hostname $firebase_project
 
 date=`date '+%F %H:%M'`
 echo "$date  $HOSTNAME $PGM : clone to $dst_disk ($dst_root_vol_name)" \
