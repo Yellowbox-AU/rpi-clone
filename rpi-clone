@@ -1690,7 +1690,7 @@ do
 		mount_partition ${src_device[p]} $clone_src ""
 		mount_partition $dst_dev $clone "$clone_src"
 		unmount_list="$clone_src $clone"
-		# rsync_file_system "${clone_src}/" "${clone}" ""
+		rsync_file_system "${clone_src}/" "${clone}" ""
 		unmount_list "$unmount_list"
 	fi
 done
@@ -1708,7 +1708,7 @@ fi
 mount_partition $dst_root_dev $clone ""
 unmount_list="$clone"
 
-# rsync_file_system "//" "$clone" "with-root-excludes"
+rsync_file_system "//" "$clone" "with-root-excludes"
 
 for ((p = 1; p <= n_src_parts; p++))
 do
@@ -1734,7 +1734,7 @@ do
 		fi
 
 		mount_partition "$dst_dev" "$dst_dir" "$unmount_list"
-		# rsync_file_system "${src_mounted_dir[p]}/" "${dst_dir}" ""
+		rsync_file_system "${src_mounted_dir[p]}/" "${dst_dir}" ""
 		unmount_list="$dst_dir $unmount_list"
 	fi
 done
